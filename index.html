@@ -4312,6 +4312,11 @@ function salvarClientes() {
   } else { localStorage.setItem('exstart_clientes_v1', JSON.stringify(clientes)); }
 }
 
+function salvarInspecoesLocal() {
+  if (window.electronAPI) { window.electronAPI.salvarInspecoes(inspections); }
+  else { localStorage.setItem('exstart_v2', JSON.stringify(inspections)); }
+}
+
 function abrirModalCliente(id = null) {
   editandoCliId = id;
   logoTemp = null;
@@ -4407,22 +4412,14 @@ function salvarCliente() {
   (async () => {
     const isEdit = !!editandoCliId;
     try {
-      let resp;
       if (isEdit) {
-        resp = await fetch(`/api/clientes/${editandoCliId}`, {
-          method: 'PUT',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({...dados, logoPath: clientes.find(c=>c.id===editandoCliId)?.logoPath})
-        });
+        const idx = clientes.findIndex(c => c.id === editandoCliId);
+        if (idx >= 0) clientes[idx] = { ...clientes[idx], ...dados, id: editandoCliId };
       } else {
-        resp = await fetch('/api/clientes', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(dados)
-        });
+        const novoId = clientes.length ? Math.max(...clientes.map(c => Number(c.id) || 0)) + 1 : 1;
+        clientes.push({ ...dados, id: novoId });
       }
-      if (!resp.ok) throw new Error('HTTP '+resp.status);
-      await _carregarClientes();
+      salvarClientes();
       // Fechar modal primeiro
       fecharModalCliente();
       renderClientes();
@@ -4432,7 +4429,7 @@ function salvarCliente() {
     } catch(e) {
       console.error(e);
       if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = '💾 Salvar'; }
-      showToast('❌ Erro ao salvar cliente. Verifique o servidor.', 'warn');
+      showToast('❌ Erro ao salvar cliente.', 'warn');
     }
   })();
 }
@@ -4463,9 +4460,8 @@ async function excluirCliente(id) {
     : `Excluir o cliente "${c?.nome}"?`;
   if(!confirm(msg)) return;
   try {
-    const resp = await fetch(`/api/clientes/${id}`, {method:'DELETE'});
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    await _carregarClientes();
+    clientes = clientes.filter(x => x.id !== id);
+    salvarClientes();
     renderClientes();
     populaSelectClientes();
     showToast('Cliente excluído.', 'warn');
@@ -5890,31 +5886,15 @@ function _confirmarESalvar(fd) {
       inspections = inspections.filter(i => i.id !== _editandoId);
       _editandoId = null;
     }
-    // Enviar para a API Flask
     try {
-      let resp;
-      if (_editandoId) {
-        resp = await fetch(`/api/inspecoes/${_editandoId}`, {
-          method: 'PUT',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({...insp, clienteId: insp.clienteId})
-        });
-        _editandoId = null;
-      } else {
-        resp = await fetch('/api/inspecoes', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(insp)
-        });
-      }
-      if (!resp.ok) throw new Error('HTTP '+resp.status);
-      await _carregarInspecoes();
+      inspections.push(insp);
+      salvarInspecoesLocal();
       renderHistory();
       renderClientes();
       showToast('✅ Inspeção salva! TAG: ' + (insp.tag||'—'));
     } catch(e) {
       console.error(e);
-      showToast('❌ Erro ao salvar. Verifique o servidor.','warn');
+      showToast('❌ Erro ao salvar.','warn');
     }
   };
 }
@@ -6042,9 +6022,8 @@ function renderHistory() {
 async function delInsp(id) {
   if(!confirm('Excluir esta inspeção?')) return;
   try {
-    const resp = await fetch(`/api/inspecoes/${id}`, {method:'DELETE'});
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    await _carregarInspecoes();
+    inspections = inspections.filter(i => i.id !== id);
+    salvarInspecoesLocal();
     renderHistory();
     showToast('Inspeção excluída.','warn');
   } catch(e) {
@@ -6849,40 +6828,34 @@ async function importarDados(input) {
       showToast('⏳ Importando dados...');
       let okCli = 0, okInsp = 0, errCli = 0, errInsp = 0;
 
-      // Importar clientes via API
+      // Importar clientes localmente
       for (const cli of dados.clientes) {
         try {
-          const resp = await fetch('/api/clientes', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-              nome: cli.nome || cli.Nome || '',
-              cnpj: cli.cnpj || cli.CNPJ || '',
-              contato: cli.contato || cli.Contato || '',
-              fone: cli.fone || cli.Fone || '',
-              email: cli.email || cli.Email || '',
-              obs: cli.obs || cli.Obs || '',
-              logo: cli.logo || ''
-            })
+          const novoId = clientes.length ? Math.max(...clientes.map(c => Number(c.id) || 0)) + 1 : 1;
+          clientes.push({
+            id: novoId,
+            nome: cli.nome || cli.Nome || '',
+            cnpj: cli.cnpj || cli.CNPJ || '',
+            contato: cli.contato || cli.Contato || '',
+            fone: cli.fone || cli.Fone || '',
+            email: cli.email || cli.Email || '',
+            obs: cli.obs || cli.Obs || '',
+            logo: cli.logo || ''
           });
-          if (resp.ok) okCli++; else errCli++;
+          okCli++;
         } catch(_) { errCli++; }
       }
+      salvarClientes();
 
-      // Importar inspeções via API
+      // Importar inspeções localmente
       for (const insp of dados.inspections) {
         try {
-          const resp = await fetch('/api/inspecoes', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(insp)
-          });
-          if (resp.ok) okInsp++; else errInsp++;
+          inspections.push({ ...insp, id: insp.id || Date.now() + okInsp });
+          okInsp++;
         } catch(_) { errInsp++; }
       }
+      salvarInspecoesLocal();
 
-      // Recarregar tudo da API
-      await _carregarDados();
       renderClientes();
       renderHistory();
       populaSelectClientes();
@@ -7054,11 +7027,6 @@ function salvarLimiares() {
   // Salvar na API e no localStorage como fallback
   if (window.electronAPI) { window.electronAPI.salvarConfig({ limiar_bom: bom, limiar_atenc: atenc }); }
   else { localStorage.setItem('exstart_limiares_v1', JSON.stringify({bom, atenc})); }
-  fetch('/api/config', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({limiar_bom: bom.toString(), limiar_atenc: atenc.toString()})
-  }).catch(e => console.warn('Erro ao salvar limiares na API:', e));
   atualizarCardLimiares();
   renderHistory();
   if (typeof renderDash === 'function') renderDash();
@@ -7073,11 +7041,6 @@ function restaurarLimiares() {
   LIMIAR_ATENC = 6;
   if (window.electronAPI) { window.electronAPI.salvarConfig({ limiar_bom: 7, limiar_atenc: 6 }); }
   else { localStorage.removeItem('exstart_limiares_v1'); }
-  fetch('/api/config', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({limiar_bom: '7', limiar_atenc: '6'})
-  }).catch(e => console.warn('Erro ao restaurar limiares na API:', e));
   atualizarCardLimiares();
   renderHistory();
   if (typeof renderDash === 'function') renderDash();

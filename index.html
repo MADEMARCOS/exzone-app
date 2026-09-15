@@ -880,6 +880,8 @@ textarea.fi{resize:vertical;min-height:70px}
           <div class="upload-text">Clique ou arraste fotos</div>
           <div class="upload-sub">Visão geral do equipamento</div>
         </div>
+        <input type="file" accept="image/*" capture="environment" multiple id="cam-equip" style="display:none" onchange="addImages('equip',this)">
+        <button type="button" class="btn" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:7px 0" onclick="document.getElementById('cam-equip').click()">📷 Tirar foto</button>
         <div class="img-grid" id="grid-equip"></div>
       </div>
       <div class="form-group">
@@ -890,6 +892,8 @@ textarea.fi{resize:vertical;min-height:70px}
           <div class="upload-text">Clique ou arraste fotos</div>
           <div class="upload-sub">Placa de certificação Ex</div>
         </div>
+        <input type="file" accept="image/*" capture="environment" multiple id="cam-placa" style="display:none" onchange="addImages('placa',this)">
+        <button type="button" class="btn" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:7px 0" onclick="document.getElementById('cam-placa').click()">📷 Tirar foto</button>
         <div class="img-grid" id="grid-placa"></div>
       </div>
       <div class="form-group">
@@ -900,6 +904,8 @@ textarea.fi{resize:vertical;min-height:70px}
           <div class="upload-text">Clique ou arraste fotos</div>
           <div class="upload-sub">Detalhes e não conformidades</div>
         </div>
+        <input type="file" accept="image/*" capture="environment" multiple id="cam-geral" style="display:none" onchange="addImages('geral',this)">
+        <button type="button" class="btn" style="width:100%;justify-content:center;margin-top:6px;font-size:12px;padding:7px 0" onclick="document.getElementById('cam-geral').click()">📷 Tirar foto</button>
         <div class="img-grid" id="grid-geral"></div>
       </div>
     </div>

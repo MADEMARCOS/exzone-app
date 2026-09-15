@@ -1,6 +1,6 @@
 // Service Worker — ExStart ExZone
 // Cacheia o app inteiro no primeiro carregamento para funcionamento 100% offline depois.
-const CACHE_NAME = 'exzone-cache-v3';
+const CACHE_NAME = 'exzone-cache-v4';
 const ASSETS = [
   './',
   './index.html',
